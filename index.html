@@ -4,9 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#121a17">
+<script>
+/* Apply the saved theme before first paint so there's no flash. */
+(function(){var K='wilsonMarkets.theme',M={dark:'#121a17',light:'#eef2ed'};
+  var mq=window.matchMedia&&matchMedia('(prefers-color-scheme: light)');
+  function pref(){try{return localStorage.getItem(K)||'system'}catch(e){return'system'}}
+  function apply(){var p=pref(),t=p==='system'?(mq&&mq.matches?'light':'dark'):p;
+    document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',M[t])}
+  window.__theme={key:K,pref:pref,apply:apply,set:function(p){try{localStorage.setItem(K,p)}catch(e){}apply()}};
+  apply();if(mq&&mq.addEventListener)mq.addEventListener('change',function(){if(pref()==='system'){apply();if(window.route)window.route()}});
+})();
+</script>
 <title>Wilson Markets</title>
 <style>
-:root{--bg:#121a17;--card:#1a2420;--card2:#222e29;--ink:#e6ebe7;--muted:#9aa89f;--line:#2e3c36;--accent:#86b3ab;--on-accent:#122420;--up:#9ccb9f;--down:#e3938f;--gold:#cdb88a;--purple:#a6a7c4;--pink:#c49fab;--r:18px;--nav:68px}
+:root{--r:18px;--nav:68px;color-scheme:dark;
+  --bg:#121a17;--card:#1a2420;--card2:#222e29;--navbg:#1a2420;--ink:#e6ebe7;--muted:#9aa89f;--line:#2e3c36;--body-ink:#d3dad5;
+  --accent:#86b3ab;--on-accent:#122420;--up:#9ccb9f;--down:#e3938f;--gold:#cdb88a;--purple:#a6a7c4;--pink:#c49fab;--tag-ink:#b9a983;
+  --hole:#121a17;--brief-bg:linear-gradient(150deg,#1f2b26 0%,#1b2622 60%,#212a25 100%);--brief-line:#344740;--stat-bg:rgba(0,0,0,.2);
+  --legend:linear-gradient(90deg,#9e504b,#5b3e3a 40%,#2e3c36 50%,#3f5c48 60%,#55875f);
+  --heat-n:46,60,54;--heat-up:74,124,88;--heat-down:156,76,72;--tile-ink:#f2f5f1;--tile-shadow:0 1px 2px rgba(0,0,0,.25);
+  --chart-grid:#25322d;--chart-label:#7f8d86;--on-tag:#121a17;--ring-track:#2a3832;--ring-hi:#8fbf95;--ring-good:#7fa9a2;--ring-mid:#c2ae82;--ring-low:#cf8783;
+  --logo-bg:#263630;--logo-line:#3a4f46;--logo-bar:#86b3ab;--logo-arrow:#cdb88a}
+:root[data-theme="light"]{color-scheme:light;
+  --bg:#eef2ed;--card:#f8faf7;--card2:#e7ede6;--navbg:#f8faf7;--ink:#1b2a23;--muted:#56665c;--line:#d2dcd3;--body-ink:#2b3a32;
+  --accent:#3e6f68;--on-accent:#f5f9f6;--up:#3b7349;--down:#9d443d;--gold:#7a6537;--purple:#575a85;--pink:#86505f;--tag-ink:#76643b;
+  --hole:#eef2ed;--brief-bg:linear-gradient(150deg,#f4f8f2 0%,#eef4ec 60%,#f3f4ec 100%);--brief-line:#cbd9ce;--stat-bg:rgba(255,255,255,.75);
+  --legend:linear-gradient(90deg,#d29a92,#e6cbc5 40%,#dde4dd 50%,#bfd6c2 60%,#93bd99);
+  --heat-n:221,228,221;--heat-up:147,189,153;--heat-down:214,152,143;--tile-ink:#1b2a23;--tile-shadow:none;
+  --chart-grid:#e1e8e1;--chart-label:#66766c;--on-tag:#f8faf7;--ring-track:#dfe7df;--ring-hi:#4b875a;--ring-good:#427670;--ring-mid:#8c7745;--ring-low:#a4534b;
+  --logo-bg:#dce7de;--logo-line:#c2d2c5;--logo-bar:#3e6f68;--logo-arrow:#8c7745}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif}
 body{max-width:520px;margin:0 auto;padding-bottom:calc(var(--nav) + 18px + env(safe-area-inset-bottom))}
@@ -15,10 +41,10 @@ button{cursor:pointer}
 a{color:var(--accent)}
 .ico{display:inline-block;vertical-align:middle;flex:none}
 /* header */
-.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:rgba(18,26,23,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(46,60,54,.6)}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
 .top h1{font-size:18px;margin:0;font-weight:800;letter-spacing:.2px;white-space:nowrap}
 .top .sp{flex:1}
-.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--gold);background:rgba(205,184,138,.07);border:1px solid rgba(205,184,138,.45);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--gold);background:color-mix(in srgb,var(--gold) 7%,transparent);border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);border-radius:999px;padding:2px 9px;white-space:nowrap}
 .iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--muted)}
 main{padding:14px 14px 0}
 /* cards */
@@ -27,32 +53,32 @@ main{padding:14px 14px 0}
 .card h2 .r{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
 .muted{color:var(--muted)}
 .small{font-size:12.5px}
-.tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:1px 6px;border-radius:6px;background:transparent;border:1px solid rgba(205,184,138,.32);color:#b9a983;vertical-align:middle}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:1px 6px;border-radius:6px;background:transparent;border:1px solid color-mix(in srgb,var(--gold) 32%,transparent);color:var(--tag-ink);vertical-align:middle}
 .up{color:var(--up)}.down{color:var(--down)}
 .pagetitle{display:flex;align-items:center;gap:10px;margin:2px 2px 12px}
 .pagetitle h2{margin:0;font-size:22px;font-weight:800}
 .pagetitle .sp{flex:1}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:10px 14px;font-weight:750;background:var(--accent);color:var(--on-accent)}
 .btn.ghost{background:var(--card2);color:var(--ink);border:1px solid var(--line)}
-.btn.danger{background:rgba(227,147,143,.14);color:var(--down);border:1px solid rgba(227,147,143,.35)}
+.btn.danger{background:color-mix(in srgb,var(--down) 14%,transparent);color:var(--down);border:1px solid color-mix(in srgb,var(--down) 35%,transparent)}
 .btn.sm{padding:7px 11px;font-size:13px;border-radius:10px}
 .btn.block{width:100%}
 /* brief */
-.brief{background:linear-gradient(150deg,#1f2b26 0%,#1b2622 60%,#212a25 100%);border-color:#344740}
+.brief{background:var(--brief-bg);border-color:var(--brief-line)}
 .brief h2 .ico{color:var(--gold)}
 .brief p{margin:0 0 8px}
 .brief .stats{display:flex;gap:8px;margin-top:10px}
-.brief .stat{flex:1;background:rgba(0,0,0,.22);border-radius:12px;padding:8px 10px}
+.brief .stat{flex:1;background:var(--stat-bg);border-radius:12px;padding:8px 10px}
 .brief .stat b{display:block;font-size:16px}
 .brief .stat span{font-size:11.5px;color:var(--muted)}
 /* treemap */
 .tm{position:relative;height:250px;border-radius:12px;overflow:hidden}
-.tile{position:absolute;padding:7px 8px;border-radius:8px;overflow:hidden;color:#f2f5f1;border:0;text-align:left;display:flex;flex-direction:column;justify-content:flex-end}
-.tile b{font-size:15px;line-height:1.1;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tile{position:absolute;padding:7px 8px;border-radius:8px;overflow:hidden;color:var(--tile-ink);border:0;text-align:left;display:flex;flex-direction:column;justify-content:flex-end}
+.tile b{font-size:15px;line-height:1.1;text-shadow:var(--tile-shadow)}
 .tile span{font-size:12px;font-weight:700;opacity:.95}
 .tile i{font-style:normal;font-size:11px;opacity:.8}
 .legend{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:11.5px;color:var(--muted)}
-.legend .bar{flex:1;height:7px;border-radius:9px;background:linear-gradient(90deg,#9e504b,#5b3e3a 40%,#2e3c36 50%,#3f5c48 60%,#55875f)}
+.legend .bar{flex:1;height:7px;border-radius:9px;background:var(--legend)}
 /* lists */
 .row{display:flex;align-items:center;gap:11px;padding:11px 2px;border-top:1px solid var(--line);background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left}
 .row:first-of-type{border-top:0}
@@ -68,7 +94,7 @@ main{padding:14px 14px 0}
 .news .ni{width:36px;height:36px;border-radius:11px;background:var(--card2);display:grid;place-items:center;color:var(--accent);flex:none}
 .news b{display:block;font-size:14.5px;line-height:1.3;margin-bottom:3px;font-weight:650}
 .news .meta{font-size:12px;color:var(--muted)}
-.chip{display:inline-block;font-size:11px;font-weight:800;padding:1px 7px;border-radius:6px;background:rgba(134,179,171,.13);color:var(--accent);margin-right:4px}
+.chip{display:inline-block;font-size:11px;font-weight:800;padding:1px 7px;border-radius:6px;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);margin-right:4px}
 /* summary */
 .sum .big{font-size:30px;font-weight:850;letter-spacing:-.5px;line-height:1.1}
 .sum .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
@@ -101,8 +127,8 @@ main{padding:14px 14px 0}
 .trade{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .trade:first-of-type{border-top:0;padding-top:0}
 .trade .k{font-size:11px;font-weight:850;padding:3px 7px;border-radius:7px;flex:none;width:44px;text-align:center}
-.trade .k.buy{background:rgba(156,203,159,.14);color:var(--up)}
-.trade .k.sell{background:rgba(227,147,143,.14);color:var(--down)}
+.trade .k.buy{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
+.trade .k.sell{background:color-mix(in srgb,var(--down) 14%,transparent);color:var(--down)}
 .trade .mid{flex:1;min-width:0;font-size:13px}
 .trade .mid b{display:block;font-size:14px}
 .trade .end{text-align:right;font-size:12.5px;color:var(--muted)}
@@ -118,13 +144,13 @@ label.f input:focus,label.f select:focus{border-color:var(--accent)}
 .al{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
 .al:first-of-type{border-top:0}
 .al .ai{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
-.al .ai.hit{background:rgba(205,184,138,.15);color:var(--gold)}
+.al .ai.hit{background:color-mix(in srgb,var(--gold) 15%,transparent);color:var(--gold)}
 .al .ai.wait{background:var(--card2);color:var(--muted)}
 .al .mid{flex:1;min-width:0}
 .al .mid b{display:block;font-size:14.5px}
 .al .mid span{font-size:12.5px;color:var(--muted)}
 .st{font-size:11px;font-weight:850;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:999px}
-.st.hit{background:rgba(205,184,138,.16);color:var(--gold);border:1px solid rgba(205,184,138,.4)}
+.st.hit{background:color-mix(in srgb,var(--gold) 16%,transparent);color:var(--gold);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent)}
 .st.wait{background:var(--card2);color:var(--muted);border:1px solid var(--line)}
 .del{border:0;background:none;color:var(--muted);padding:6px;border-radius:9px}
 /* learn */
@@ -136,17 +162,17 @@ label.f input:focus,label.f select:focus{border-color:var(--accent)}
 .lesson summary span{font-size:12.5px;color:var(--muted)}
 .lesson .chev{margin-left:auto;color:var(--muted);transition:transform .2s}
 .lesson[open] .chev{transform:rotate(90deg)}
-.lesson .body{padding:0 14px 14px 68px;font-size:14px;color:#d3dad5}
+.lesson .body{padding:0 14px 14px 68px;font-size:14px;color:var(--body-ink)}
 .lesson .body p{margin:0 0 8px}
 .lesson .ex{background:var(--card2);border-radius:11px;padding:8px 10px;font-size:13px;color:var(--muted)}
 .lesson .ex b{color:var(--ink)}
 /* nav */
-nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:center;background:rgba(26,36,32,.97);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:center;background:color-mix(in srgb,var(--navbg) 97%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
 nav.tabs .in{display:flex;width:100%;max-width:520px}
 nav.tabs button{flex:1;border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;padding:4px 0}
 nav.tabs button .pill{display:grid;place-items:center;width:52px;height:30px;border-radius:999px}
 nav.tabs button.on{color:var(--accent)}
-nav.tabs button.on .pill{background:rgba(134,179,171,.11)}
+nav.tabs button.on .pill{background:color-mix(in srgb,var(--accent) 11%,transparent)}
 /* sheet */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
 .sheet{visibility:hidden;position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:520px;margin:0 auto;background:var(--card);border-top-left-radius:22px;border-top-right-radius:22px;border:1px solid var(--line);padding:10px 16px calc(18px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .25s}
@@ -154,19 +180,19 @@ nav.tabs button.on .pill{background:rgba(134,179,171,.11)}
 .sheet h3{margin:0 0 12px;font-size:18px}
 body.sheet-open .scrim{opacity:1;pointer-events:auto}
 body.sheet-open .sheet{transform:none;visibility:visible}
-.toast{position:fixed;left:50%;bottom:calc(var(--nav) + 24px);transform:translateX(-50%) translateY(20px);background:#e6ebe7;color:#121a17;font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:999px;opacity:0;transition:.25s;z-index:50;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav) + 24px);transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:999px;opacity:0;transition:.25s;z-index:50;pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%)}
 .empty{text-align:center;color:var(--muted);padding:18px 8px;font-size:14px}
 .note{font-size:12px;color:var(--muted);margin:4px 4px 16px;line-height:1.5}
-.badge.live{color:var(--accent);background:rgba(134,179,171,.07);border-color:rgba(134,179,171,.45)}
+.badge.live{color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .src{font-size:11px;font-weight:600;color:var(--muted);opacity:.85}
-.soft{display:flex;gap:9px;align-items:flex-start;background:rgba(205,184,138,.05);border:1px solid rgba(205,184,138,.22);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--muted);margin-bottom:10px}
+.soft{display:flex;gap:9px;align-items:flex-start;background:color-mix(in srgb,var(--gold) 5%,transparent);border:1px solid color-mix(in srgb,var(--gold) 22%,transparent);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--muted);margin-bottom:10px}
 .soft .ico{color:var(--gold);margin-top:1px}.soft b{color:var(--ink)}
 .card .soft:last-child{margin-bottom:0}
 a.news{color:inherit;text-decoration:none}
 .lnk{color:var(--accent);font-weight:600}
 .tops{display:flex;flex-direction:column;gap:6px;margin-top:4px}
-.tops a,.tops div{display:block;color:inherit;text-decoration:none;background:rgba(0,0,0,.18);border-radius:10px;padding:7px 10px}
+.tops a,.tops div{display:block;color:inherit;text-decoration:none;background:var(--stat-bg);border-radius:10px;padding:7px 10px}
 .tops b{display:block;font-size:13.5px;font-weight:650;line-height:1.3}
 .tops span{font-size:11.5px;color:var(--muted)}
 .trade .k.other{background:var(--card2);color:var(--muted)}
@@ -176,7 +202,7 @@ a.news{color:inherit;text-decoration:none}
 .chks{margin-top:10px;display:flex;flex-direction:column;gap:6px}
 .chk{display:flex;align-items:center;gap:10px;font-size:13.5px}
 .chk span{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;min-width:78px;text-align:center}
-.okc{background:rgba(156,203,159,.13);color:var(--up)}.noc{background:rgba(205,184,138,.12);color:var(--gold)}
+.okc{background:color-mix(in srgb,var(--up) 13%,transparent);color:var(--up)}.noc{background:color-mix(in srgb,var(--gold) 12%,transparent);color:var(--gold)}
 .addbar{display:flex;gap:8px;margin-bottom:12px}
 .addbar input{flex:1;min-width:0;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);font-size:16px;outline:none;text-transform:uppercase}
 .addbar input::placeholder{text-transform:none}
@@ -208,9 +234,9 @@ const TZ = 'America/New_York';
    ICONS — solid pictograms (inline SVG, currentColor)
    ========================================================= */
 const P = {
-  home:'<path d="M12 2.4 22.4 11.3h-2.9V21.5H4.5V11.3H1.6Z"/><path d="M16.3 3.6h2.6v4.6l-2.6-2.2Z"/><rect x="9.6" y="14.6" width="4.8" height="6.9" rx=".6" fill="var(--hole,#121a17)"/><rect x="6.6" y="11.6" width="2.6" height="2.4" rx=".4" fill="var(--hole,#121a17)"/><rect x="14.8" y="11.6" width="2.6" height="2.4" rx=".4" fill="var(--hole,#121a17)"/>',
+  home:'<path d="M12 2.4 22.4 11.3h-2.9V21.5H4.5V11.3H1.6Z"/><path d="M16.3 3.6h2.6v4.6l-2.6-2.2Z"/><rect x="9.6" y="14.6" width="4.8" height="6.9" rx=".6" style="fill:var(--hole)"/><rect x="6.6" y="11.6" width="2.6" height="2.4" rx=".4" style="fill:var(--hole)"/><rect x="14.8" y="11.6" width="2.6" height="2.4" rx=".4" style="fill:var(--hole)"/>',
   pie:'<path d="M10.9 3.2A9.1 9.1 0 1 0 20.8 13H10.9Z"/><path d="M13 1.2V11h9.8A9.8 9.8 0 0 0 13 1.2Z"/>',
-  eye:'<path fill-rule="evenodd" d="M12 4.6C6.4 4.6 2.6 8.4 1 12c1.6 3.6 5.4 7.4 11 7.4s9.4-3.8 11-7.4c-1.6-3.6-5.4-7.4-11-7.4Zm0 2.7a4.7 4.7 0 1 1 0 9.4 4.7 4.7 0 0 1 0-9.4Z"/><circle cx="12" cy="12" r="2.4"/><circle cx="13.6" cy="10.4" r=".9" fill="var(--hole,#121a17)"/>',
+  eye:'<path fill-rule="evenodd" d="M12 4.6C6.4 4.6 2.6 8.4 1 12c1.6 3.6 5.4 7.4 11 7.4s9.4-3.8 11-7.4c-1.6-3.6-5.4-7.4-11-7.4Zm0 2.7a4.7 4.7 0 1 1 0 9.4 4.7 4.7 0 0 1 0-9.4Z"/><circle cx="12" cy="12" r="2.4"/><circle cx="13.6" cy="10.4" r=".9" style="fill:var(--hole)"/>',
   bell:'<path d="M12 1.8c.9 0 1.6.7 1.6 1.6v.8a6.4 6.4 0 0 1 4.9 6.3v4.5l2.1 2.8v1.1H3.4v-1.1l2.1-2.8v-4.5a6.4 6.4 0 0 1 4.9-6.3v-.8c0-.9.7-1.6 1.6-1.6Z"/><path d="M9.4 20.1h5.2a2.6 2.6 0 0 1-5.2 0Z"/><path d="M2.3 9.6a8.6 8.6 0 0 1 2.8-5.4l1.2 1.3a6.8 6.8 0 0 0-2.2 4.3ZM21.7 9.6l-1.8-.2a6.8 6.8 0 0 0-2.2-4.3l1.2-1.3a8.6 8.6 0 0 1 2.8 5.8Z"/>',
   cap:'<path d="M12 3.2 1 8.6l11 5.5 9-4.5v6.1h1.9V8.6Z"/><path d="M5.4 12.3v4.4c1.6 1.8 4 2.9 6.6 2.9s5-1.1 6.6-2.9v-4.4L12 15.6Z"/><circle cx="21.95" cy="17" r="1.5"/>',
   gear:'<path fill-rule="evenodd" d="M10.3 1.8h3.4l.5 2.6c.7.2 1.3.5 1.9.9l2.2-1.5 2.4 2.4-1.5 2.2c.4.6.7 1.2.9 1.9l2.6.5v3.4l-2.6.5c-.2.7-.5 1.3-.9 1.9l1.5 2.2-2.4 2.4-2.2-1.5c-.6.4-1.2.7-1.9.9l-.5 2.6h-3.4l-.5-2.6c-.7-.2-1.3-.5-1.9-.9l-2.2 1.5-2.4-2.4 1.5-2.2c-.4-.6-.7-1.2-.9-1.9l-2.6-.5v-3.4l2.6-.5c.2-.7.5-1.3.9-1.9L3.3 6.2l2.4-2.4 2.2 1.5c.6-.4 1.2-.7 1.9-.9ZM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z"/>',
@@ -240,7 +266,7 @@ const P = {
   info:'<path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1.2 8.2h2.4V17h-2.4Zm1.2-4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"/>'
 };
 function ic(name,size=22,extra=''){return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ${extra}>${P[name]||''}</svg>`}
-const BRAND = `<svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="#263630"/><rect x=".5" y=".5" width="39" height="39" rx="10.5" fill="none" stroke="#3a4f46"/><rect x="9.4" y="15" width="1.6" height="16" fill="#86b3ab" opacity=".5"/><rect x="7.5" y="19" width="5.4" height="9" rx="1.2" fill="#86b3ab"/><rect x="19.2" y="11" width="1.6" height="18" fill="#86b3ab" opacity=".5"/><rect x="17.3" y="14" width="5.4" height="11" rx="1.2" fill="#86b3ab"/><rect x="29" y="7" width="1.6" height="17" fill="#86b3ab" opacity=".5"/><rect x="27.1" y="9.5" width="5.4" height="10" rx="1.2" fill="#86b3ab"/><path d="M6 33.5 16 26l7 3.6L34 20" stroke="#cdb88a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M29.6 19.3 34.6 19.4 34.4 24.4Z" fill="#cdb88a"/></svg>`;
+const BRAND = `<svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" style="fill:var(--logo-bg)"/><rect x=".5" y=".5" width="39" height="39" rx="10.5" fill="none" style="stroke:var(--logo-line)"/><rect x="9.4" y="15" width="1.6" height="16" style="fill:var(--logo-bar)" opacity=".5"/><rect x="7.5" y="19" width="5.4" height="9" rx="1.2" style="fill:var(--logo-bar)"/><rect x="19.2" y="11" width="1.6" height="18" style="fill:var(--logo-bar)" opacity=".5"/><rect x="17.3" y="14" width="5.4" height="11" rx="1.2" style="fill:var(--logo-bar)"/><rect x="29" y="7" width="1.6" height="17" style="fill:var(--logo-bar)" opacity=".5"/><rect x="27.1" y="9.5" width="5.4" height="10" rx="1.2" style="fill:var(--logo-bar)"/><path d="M6 33.5 16 26l7 3.6L34 20" style="stroke:var(--logo-arrow)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M29.6 19.3 34.6 19.4 34.4 24.4Z" style="fill:var(--logo-arrow)"/></svg>`;
 
 /* =========================================================
    HELPERS
@@ -501,11 +527,11 @@ function qualityScore(f){
   if(!f)return null;
   const mk=(k,v,d,pf,c)=>({k,c,d:v==null?'Not reported':d(v),p:v==null?null:clamp(pf(v),0,20)});
   const parts=[
-    mk('Growth',f.revGrowth,v=>'Revenue growth '+v.toFixed(0)+'% / yr',v=>(v+5)/30*20,'#86b3ab'),
-    mk('Margins',f.netMargin,v=>'Net profit margin '+v.toFixed(0)+'%',v=>v/30*20,'#a6a7c4'),
-    mk('Debt',f.debtToEquity,v=>'Debt-to-equity '+v.toFixed(1)+'x',v=>(2.5-v)/2.5*20,'#c49fab'),
-    mk('Cash',f.cashToDebt,v=>'Cash covers '+(v>=5?'5+':v.toFixed(1))+'x its debt',v=>v/2*20,'#9ccb9f'),
-    mk('Valuation',f.pe,v=>v<=0?'P/E n/a (losing money)':'P/E ratio '+v.toFixed(0),v=>v<=0?4:(60-v)/45*20,'#cdb88a')];
+    mk('Growth',f.revGrowth,v=>'Revenue growth '+v.toFixed(0)+'% / yr',v=>(v+5)/30*20,'var(--accent)'),
+    mk('Margins',f.netMargin,v=>'Net profit margin '+v.toFixed(0)+'%',v=>v/30*20,'var(--purple)'),
+    mk('Debt',f.debtToEquity,v=>'Debt-to-equity '+v.toFixed(1)+'x',v=>(2.5-v)/2.5*20,'var(--pink)'),
+    mk('Cash',f.cashToDebt,v=>'Cash covers '+(v>=5?'5+':v.toFixed(1))+'x its debt',v=>v/2*20,'var(--up)'),
+    mk('Valuation',f.pe,v=>v<=0?'P/E n/a (losing money)':'P/E ratio '+v.toFixed(0),v=>v<=0?4:(60-v)/45*20,'var(--gold)')];
   const have=parts.filter(p=>p.p!=null);if(have.length<3)return null;
   const total=Math.round(sum(have.map(x=>x.p))/(have.length*20)*100);
   const label=total>=80?'Excellent':total>=65?'Strong':total>=50?'Fair':total>=35?'Weak':'Poor';
@@ -538,7 +564,9 @@ function squarify(items,W,H){
     else{const rh=S/r.w;let x=r.x;row.forEach(i=>{const w=i.a/rh;out.push({...i,x,y:r.y,w,h:rh});x+=w});r={x:r.x,y:r.y+rh,w:r.w,h:r.h-rh}}};
   while(list.length){const s=Math.min(r.w,r.h);if(worst(row.concat(list[0]),s)<=worst(row,s)){row.push(list.shift())}else{lay(row);row=[]}}
   if(row.length)lay(row);return out}
-function heatColor(p){const t=clamp(Math.abs(p)/3,0,1);const n=[46,60,54];const g=[74,124,88],rd=[156,76,72];const e=p>=0?g:rd;const m=n.map((v,i)=>Math.round(v+(e[i]-v)*(.25+.75*t)));return`rgb(${m.join(',')})`}
+const cssv=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const rgbv=k=>cssv(k).split(',').map(Number);
+function heatColor(p){const t=clamp(Math.abs(p)/3,0,1);const n=rgbv('--heat-n'),g=rgbv('--heat-up'),rd=rgbv('--heat-down');const e=p>=0?g:rd;const m=n.map((v,i)=>Math.round(v+(e[i]-v)*(.25+.75*t)));return`rgb(${m.join(',')})`}
 function drawTreemap(el,rows){
   const W=el.clientWidth,H=el.clientHeight,gap=3;
   const tiles=squarify(rows.map(r=>({v:r.value,r})),W,H);
@@ -552,18 +580,18 @@ function drawPriceChart(el,c,lv){
   const W=el.clientWidth,H=el.clientHeight,padL=6,padR=58,padT=12,padB=22;const n=c.closes.length;
   const all=c.closes.concat([lv.support,lv.resistance]);let mn=Math.min(...all),mx=Math.max(...all);const pad=(mx-mn)*.08||1;mn-=pad;mx+=pad;
   const X=i=>padL+i/(n-1)*(W-padL-padR),Y=v=>padT+(1-(v-mn)/(mx-mn))*(H-padT-padB);
-  const up=c.closes[n-1]>=c.closes[0],col=up?'#9ccb9f':'#e3938f';
+  const up=c.closes[n-1]>=c.closes[0],col=up?'var(--up)':'var(--down)';
   const line=c.closes.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join('');
   const area=line+`L${X(n-1).toFixed(1)} ${H-padB}L${X(0).toFixed(1)} ${H-padB}Z`;
-  const grid=[0,1,2,3].map(k=>{const v=mn+(mx-mn)*(k+.5)/4;const near=Math.min(Math.abs(Y(v)-Y(lv.support)),Math.abs(Y(v)-Y(lv.resistance)))<16;return`<line x1="${padL}" x2="${W-padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="#25322d" stroke-width="1"/>${near?'':`<text x="${W-padR+6}" y="${Y(v)+4}" fill="#7f8d86" font-size="10.5">${v>=1000?Math.round(v):v.toFixed(0)}</text>`}`}).join('');
-  const lvl=(v,colr,lab)=>`<line x1="${padL}" x2="${W-padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="${colr}" stroke-opacity=".7" stroke-width="1.3" stroke-dasharray="4 4"/><rect x="${W-padR+2}" y="${Y(v)-9}" width="${padR-3}" height="18" rx="5" fill="${colr}" fill-opacity=".9"/><text x="${W-padR/2+.5}" y="${Y(v)+4}" fill="#121a17" font-size="10.5" font-weight="800" text-anchor="middle">${lab}</text>`;
+  const grid=[0,1,2,3].map(k=>{const v=mn+(mx-mn)*(k+.5)/4;const near=Math.min(Math.abs(Y(v)-Y(lv.support)),Math.abs(Y(v)-Y(lv.resistance)))<16;return`<line x1="${padL}" x2="${W-padR}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--chart-grid)" stroke-width="1"/>${near?'':`<text x="${W-padR+6}" y="${Y(v)+4}" style="fill:var(--chart-label)" font-size="10.5">${v>=1000?Math.round(v):v.toFixed(0)}</text>`}`}).join('');
+  const lvl=(v,colr,lab)=>`<line x1="${padL}" x2="${W-padR}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:${colr}" stroke-opacity=".7" stroke-width="1.3" stroke-dasharray="4 4"/><rect x="${W-padR+2}" y="${Y(v)-9}" width="${padR-3}" height="18" rx="5" style="fill:${colr}" fill-opacity=".9"/><text x="${W-padR/2+.5}" y="${Y(v)+4}" style="fill:var(--on-tag)" font-size="10.5" font-weight="800" text-anchor="middle">${lab}</text>`;
   const d0=c.dates[0],d1=c.dates[n-1];
-  el.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".16"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>${grid}<path d="${area}" fill="url(#ag)"/><path d="${line}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round"/>${lvl(lv.resistance,'#cdb88a','R '+(lv.resistance>=1000?Math.round(lv.resistance):lv.resistance.toFixed(0)))}${lvl(lv.support,'#86b3ab','S '+(lv.support>=1000?Math.round(lv.support):lv.support.toFixed(0)))}<circle cx="${X(n-1)}" cy="${Y(c.closes[n-1])}" r="4" fill="${col}" stroke="#121a17" stroke-width="2"/><text x="${padL}" y="${H-5}" fill="#7f8d86" font-size="10.5">${shortDate(d0)}</text><text x="${W-padR}" y="${H-5}" fill="#7f8d86" font-size="10.5" text-anchor="end">${shortDate(d1)}</text></svg>`}
-function sparkline(closes,w=72,h=28){const mn=Math.min(...closes),mx=Math.max(...closes);const n=closes.length;const col=closes[n-1]>=closes[0]?'#9ccb9f':'#e3938f';
+  el.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${col}" stop-opacity=".16"/><stop offset="1" style="stop-color:${col}" stop-opacity="0"/></linearGradient></defs>${grid}<path d="${area}" fill="url(#ag)"/><path d="${line}" fill="none" style="stroke:${col}" stroke-width="1.8" stroke-linejoin="round"/>${lvl(lv.resistance,'var(--gold)','R '+(lv.resistance>=1000?Math.round(lv.resistance):lv.resistance.toFixed(0)))}${lvl(lv.support,'var(--accent)','S '+(lv.support>=1000?Math.round(lv.support):lv.support.toFixed(0)))}<circle cx="${X(n-1)}" cy="${Y(c.closes[n-1])}" r="4" style="fill:${col};stroke:var(--card)" stroke-width="2"/><text x="${padL}" y="${H-5}" style="fill:var(--chart-label)" font-size="10.5">${shortDate(d0)}</text><text x="${W-padR}" y="${H-5}" style="fill:var(--chart-label)" font-size="10.5" text-anchor="end">${shortDate(d1)}</text></svg>`}
+function sparkline(closes,w=72,h=28){const mn=Math.min(...closes),mx=Math.max(...closes);const n=closes.length;const col=closes[n-1]>=closes[0]?'var(--up)':'var(--down)';
   const d=closes.map((v,i)=>(i?'L':'M')+(i/(n-1)*w).toFixed(1)+' '+(2+(1-(v-mn)/((mx-mn)||1))*(h-4)).toFixed(1)).join('');
-  return`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round"/></svg>`}
-function ring(score,size=86){const r=size/2-7,C=2*Math.PI*r,col=score>=80?'#8fbf95':score>=65?'#7fa9a2':score>=50?'#c2ae82':'#cf8783';
-  return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="#2a3832" stroke-width="8" fill="none"/><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${col}" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="${C*score/100} ${C}" transform="rotate(-90 ${size/2} ${size/2})"/><text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" fill="#e6ebe7" font-size="24" font-weight="850">${score}</text></svg>`}
+  return`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}" fill="none" style="stroke:${col}" stroke-width="1.8" stroke-linejoin="round"/></svg>`}
+function ring(score,size=86){const r=size/2-7,C=2*Math.PI*r,col=score>=80?'var(--ring-hi)':score>=65?'var(--ring-good)':score>=50?'var(--ring-mid)':'var(--ring-low)';
+  return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" style="stroke:var(--ring-track)" stroke-width="8" fill="none"/><circle cx="${size/2}" cy="${size/2}" r="${r}" style="stroke:${col}" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="${C*score/100} ${C}" transform="rotate(-90 ${size/2} ${size/2})"/><text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" style="fill:var(--ink)" font-size="24" font-weight="850">${score}</text></svg>`}
 /* =========================================================
    VIEWS
    ========================================================= */
@@ -682,7 +710,7 @@ async function renderStock(sym){
   <section class="card"><h2>${ic('news',19,'style="color:var(--accent)"')} ${esc(sym)} news <span class="r">${tagOr()}</span></h2>${!Rn.ok?soft(Rn.e,'News unavailable'):(Rn.v.slice(0,6).map(n=>newsItem(n,{chip:false,summary:true})).join('')||'<div class="empty">No headlines in the last week.</div>')}</section>`;
   if(Rc.ok){const cAll=Rc.v;
     const draw=()=>{const c={dates:cAll.dates.slice(-chartRange),closes:cAll.closes.slice(-chartRange)};const lv=levels(c.closes);drawPriceChart($('#ch'),c,lv);const px=q?q.price:c.closes[c.closes.length-1];
-      $('#lv').innerHTML=`<div>${ic('candles',14,'style="color:#86b3ab"')} Support<b>${fmt$(lv.support)}</b>${((px-lv.support)/px*100).toFixed(1)}% below price</div><div>${ic('candles',14,'style="color:#cdb88a"')} Resistance<b>${fmt$(lv.resistance)}</b>${lv.resistance<=px*1.002?'Testing the range high':((lv.resistance-px)/px*100).toFixed(1)+'% above price'}</div>`};
+      $('#lv').innerHTML=`<div>${ic('candles',14,'style="color:var(--accent)"')} Support<b>${fmt$(lv.support)}</b>${((px-lv.support)/px*100).toFixed(1)}% below price</div><div>${ic('candles',14,'style="color:var(--gold)"')} Resistance<b>${fmt$(lv.resistance)}</b>${lv.resistance<=px*1.002?'Testing the range high':((lv.resistance-px)/px*100).toFixed(1)+'% above price'}</div>`};
     draw();
     $('#rg').onclick=e=>{const b=e.target.closest('button');if(!b)return;chartRange=+b.dataset.d;$('#rg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));draw()};}
   $('#bk').onclick=()=>{location.hash=lastTab};
@@ -713,27 +741,31 @@ async function renderAlerts(){
 }
 
 const LESSONS=[
-  ['receipt','#86b3ab','Shares, cost basis & gain','What you own and how you are doing',`<p>A <b>share</b> is a tiny slice of a company. Your <b>cost basis</b> is what you paid in total. Your <b>gain or loss</b> is today's value minus that cost.</p><div class="ex"><b>Example:</b> 10 shares bought at $100 = $1,000 basis. At $120 they're worth $1,200, a $200 (20%) gain. It's "unrealized" until you sell.</div>`],
-  ['building','#a6a7c4','Market cap','How big a company is',`<p><b>Market capitalization</b> = share price × number of shares. It's the price tag the market puts on the whole company.</p><div class="ex"><b>Rough sizes:</b> over $200B is mega-cap, $10B–$200B large-cap, $2B–$10B mid-cap, under $2B small-cap. Smaller companies usually swing more.</div>`],
-  ['scale','#cdb88a','P/E ratio','Is the price high or low for its profits?',`<p>The <b>price-to-earnings ratio</b> = share price ÷ yearly profit per share. It tells you how many dollars investors pay for $1 of profit.</p><div class="ex"><b>Example:</b> a $50 stock earning $2.50 a share has a P/E of 20. A high P/E usually means people expect fast growth; it can also mean it's pricey.</div>`],
-  ['coin','#9ccb9f','Dividends','Getting paid to hold',`<p>A <b>dividend</b> is cash a company pays shareholders, usually every quarter. The <b>dividend yield</b> = yearly dividend ÷ share price.</p><div class="ex"><b>Example:</b> a $60 stock paying $1.80 a year yields 3%. Many people reinvest dividends to buy more shares automatically.</div>`],
-  ['candles','#86b3ab','Support & resistance','Price levels traders watch',`<p><b>Support</b> is a price where buyers have stepped in before, so the price tended to bounce up. <b>Resistance</b> is where sellers showed up and the price stalled.</p><div class="ex">When a price breaks clearly through resistance, that old ceiling often becomes the new floor. These are hints, not rules.</div>`],
-  ['layers','#c49fab','ETFs & index funds','Owning many stocks at once',`<p>An <b>ETF</b> is a basket of investments that trades like one stock. An index ETF like an S&amp;P 500 fund owns roughly 500 large US companies.</p><div class="ex">The <b>expense ratio</b> is the yearly fee. 0.03% means $3 a year per $10,000 invested.</div>`],
-  ['idcard','#a6a7c4','Insider trades','When executives buy or sell',`<p>Company officers, directors and big owners must report their trades to the SEC (Form 4), usually within 2 business days.</p><div class="ex">Selling is common (taxes, planned sales). <b>Buying</b> with their own money is often read as a more meaningful signal.</div>`],
-  ['capitol','#cdb88a','Congress trades','What lawmakers report',`<p>Under the STOCK Act, members of Congress must disclose stock trades within 45 days, giving a dollar <b>range</b> rather than an exact amount.</p><div class="ex">Because reports can be weeks late, the price may have already moved by the time you see them.</div>`],
-  ['shield','#9ccb9f','Our quality score','How the 0–100 score works',`<p>Each company gets up to 20 points in five areas: <b>growth</b> (sales rising), <b>margins</b> (profit kept from each sale), <b>debt</b> (lower is safer), <b>cash</b> (cushion vs. debt) and <b>valuation</b> (lower P/E scores higher).</p><div class="ex">It's a quick health check, not a buy or sell signal.</div>`],
-  ['diversify','#c49fab','Diversification','Not all eggs in one basket',`<p>Owning different companies, sectors and funds means one bad stock can't sink your whole portfolio.</p><div class="ex">Check your heat map: if one tile covers most of it, that one stock drives most of your results.</div>`]
+  ['receipt','var(--accent)','Shares, cost basis & gain','What you own and how you are doing',`<p>A <b>share</b> is a tiny slice of a company. Your <b>cost basis</b> is what you paid in total. Your <b>gain or loss</b> is today's value minus that cost.</p><div class="ex"><b>Example:</b> 10 shares bought at $100 = $1,000 basis. At $120 they're worth $1,200, a $200 (20%) gain. It's "unrealized" until you sell.</div>`],
+  ['building','var(--purple)','Market cap','How big a company is',`<p><b>Market capitalization</b> = share price × number of shares. It's the price tag the market puts on the whole company.</p><div class="ex"><b>Rough sizes:</b> over $200B is mega-cap, $10B–$200B large-cap, $2B–$10B mid-cap, under $2B small-cap. Smaller companies usually swing more.</div>`],
+  ['scale','var(--gold)','P/E ratio','Is the price high or low for its profits?',`<p>The <b>price-to-earnings ratio</b> = share price ÷ yearly profit per share. It tells you how many dollars investors pay for $1 of profit.</p><div class="ex"><b>Example:</b> a $50 stock earning $2.50 a share has a P/E of 20. A high P/E usually means people expect fast growth; it can also mean it's pricey.</div>`],
+  ['coin','var(--up)','Dividends','Getting paid to hold',`<p>A <b>dividend</b> is cash a company pays shareholders, usually every quarter. The <b>dividend yield</b> = yearly dividend ÷ share price.</p><div class="ex"><b>Example:</b> a $60 stock paying $1.80 a year yields 3%. Many people reinvest dividends to buy more shares automatically.</div>`],
+  ['candles','var(--accent)','Support & resistance','Price levels traders watch',`<p><b>Support</b> is a price where buyers have stepped in before, so the price tended to bounce up. <b>Resistance</b> is where sellers showed up and the price stalled.</p><div class="ex">When a price breaks clearly through resistance, that old ceiling often becomes the new floor. These are hints, not rules.</div>`],
+  ['layers','var(--pink)','ETFs & index funds','Owning many stocks at once',`<p>An <b>ETF</b> is a basket of investments that trades like one stock. An index ETF like an S&amp;P 500 fund owns roughly 500 large US companies.</p><div class="ex">The <b>expense ratio</b> is the yearly fee. 0.03% means $3 a year per $10,000 invested.</div>`],
+  ['idcard','var(--purple)','Insider trades','When executives buy or sell',`<p>Company officers, directors and big owners must report their trades to the SEC (Form 4), usually within 2 business days.</p><div class="ex">Selling is common (taxes, planned sales). <b>Buying</b> with their own money is often read as a more meaningful signal.</div>`],
+  ['capitol','var(--gold)','Congress trades','What lawmakers report',`<p>Under the STOCK Act, members of Congress must disclose stock trades within 45 days, giving a dollar <b>range</b> rather than an exact amount.</p><div class="ex">Because reports can be weeks late, the price may have already moved by the time you see them.</div>`],
+  ['shield','var(--up)','Our quality score','How the 0–100 score works',`<p>Each company gets up to 20 points in five areas: <b>growth</b> (sales rising), <b>margins</b> (profit kept from each sale), <b>debt</b> (lower is safer), <b>cash</b> (cushion vs. debt) and <b>valuation</b> (lower P/E scores higher).</p><div class="ex">It's a quick health check, not a buy or sell signal.</div>`],
+  ['diversify','var(--pink)','Diversification','Not all eggs in one basket',`<p>Owning different companies, sectors and funds means one bad stock can't sink your whole portfolio.</p><div class="ex">Check your heat map: if one tile covers most of it, that one stock drives most of your results.</div>`]
 ];
 function renderLearn(){
   main().innerHTML=`<div class="pagetitle"><h2>Learn</h2></div><p class="note" style="margin-top:-6px">Short, plain-English explainers. Tap one to open it.</p>
-  ${LESSONS.map(([i,c,t,s,b],k)=>`<details class="lesson"${k===0?' open':''}><summary><span class="li" style="background:${c}22;color:${c}">${ic(i,24)}</span><span><b>${t}</b><span>${s}</span></span><span class="chev">${ic('chev',16)}</span></summary><div class="body">${b}</div></details>`).join('')}
+  ${LESSONS.map(([i,c,t,s,b],k)=>`<details class="lesson"${k===0?' open':''}><summary><span class="li" style="background:color-mix(in srgb,${c} 15%,transparent);color:${c}">${ic(i,24)}</span><span><b>${t}</b><span>${s}</span></span><span class="chev">${ic('chev',16)}</span></summary><div class="body">${b}</div></details>`).join('')}
   <p class="note">Educational only, not financial advice.</p>`;
 }
 
 function renderSettings(){
   const s=Store.s.settings;
   const status=s.provider==='live'?(s.finnhubKey?'Live: prices, news, financials and filings come from Finnhub.':'Live is selected but there is no Finnhub key yet, so sample data is shown.'):'Sample data is shown. Switch to Live once your key is saved.';
+  const tp=window.__theme?window.__theme.pref():'system';
   main().innerHTML=`<div class="shead"><button class="iconbtn" id="bk" aria-label="Back">${ic('back',20)}</button><span class="t"><b>Settings</b></span></div>
+  <section class="card"><h2>${ic('sunrise',19,'style="color:var(--accent)"')} Appearance</h2>
+   <div class="seg" id="sTheme">${[['dark','Dark'],['light','Light'],['system','System']].map(([k,l])=>`<button data-t="${k}" class="${tp===k?'on':''}">${l}</button>`).join('')}</div>
+   <p class="muted small" style="margin:8px 0 0">System follows your phone's light or dark setting.</p></section>
   <section class="card"><h2>${ic('key',19,'style="color:var(--gold)"')} Market data</h2>
    <div class="seg" id="sP" style="margin-bottom:12px"><button data-p="sample" class="${s.provider!=='live'?'on':''}">Sample</button><button data-p="live" class="${s.provider==='live'?'on':''}">Live (Finnhub)</button></div>
    <p class="muted small" id="sStat" style="margin:-4px 0 12px">${esc(status)}</p>
@@ -749,6 +781,7 @@ function renderSettings(){
    <div class="frow"><button class="btn ghost" id="sReset">Load sample holdings</button><button class="btn danger" id="sWipe">Erase all</button></div></section>
   <p class="note">${APP_NAME} · preview build · ${isLive()?'live data':'sample data'}</p>`;
   $('#bk').onclick=()=>{location.hash=lastTab};
+  $('#sTheme').onclick=e=>{const b=e.target.closest('button');if(!b||!window.__theme)return;window.__theme.set(b.dataset.t);$('#sTheme').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))};
   $('#sP').onclick=e=>{const b=e.target.closest('button');if(!b)return;s.provider=b.dataset.p;Store.save();inflight.clear();toast(b.dataset.p==='live'?(s.finnhubKey?'Live data on':'Add your key to go live'):'Sample data on');renderSettings();updateBadge()};
   $('#sShow').onclick=()=>{['#sK','#sT'].forEach(id=>{const i=$(id);i.type=i.type==='password'?'text':'password'});$('#sShow').textContent=$('#sK').type==='password'?'Show':'Hide'};
   $('#sSave').onclick=()=>{s.finnhubKey=$('#sK').value.trim();s.twelveKey=$('#sT').value.trim();Store.save();Cache.clear();toast('Keys saved on this device');renderSettings();updateBadge()};
@@ -786,6 +819,7 @@ async function route(){
   if(route._v!==location.hash){window.scrollTo(0,0);route._v=location.hash}
 }
 function boot(){
+  window.route=route;
   document.title=APP_NAME;$('#appname').textContent=APP_NAME;$('#brand').innerHTML=BRAND;$('#gear').innerHTML=ic('gear',20);
   $('#tabs').innerHTML=TABS.map(([k,l,i])=>`<button data-tab="${k}"><span class="pill">${ic(i,23)}</span>${l}</button>`).join('');
   $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)location.hash=b.dataset.tab};
