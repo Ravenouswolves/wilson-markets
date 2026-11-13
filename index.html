@@ -212,6 +212,12 @@ a.news{color:inherit;text-decoration:none}
 .alpaca-st.ok{color:var(--up)}
 .alpaca-st.bad{color:var(--down)}
 .alpaca-st.warn{color:var(--gold)}
+.guide-n{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:800;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);flex:none}
+.ph{background:var(--card2);border:1px dashed var(--line);border-radius:11px;padding:16px 12px;font-size:13px;color:var(--muted);text-align:center;margin:10px 0 2px;line-height:1.45}
+.guide .card p{margin:0 0 8px;color:var(--body-ink);font-size:14px}
+.guide .card ul{margin:0 0 8px;padding-left:18px;color:var(--body-ink);font-size:14px}
+.guide .card ul li{margin:0 0 6px}
+.guide .card p:last-child,.guide .card ul:last-child{margin-bottom:0}
 </style>
 </head>
 <body>
@@ -912,6 +918,7 @@ function renderSettings(){
    <label class="f">Alpaca data key ID<input id="sAId" type="password" value="${esc(s.alpacaKeyId||'')}" placeholder="Key ID from a separate empty paper account" autocomplete="off" spellcheck="false"></label>
    <label class="f">Alpaca data secret<input id="sASec" type="password" value="${esc(s.alpacaSecret||'')}" placeholder="Secret key from the same paper account" autocomplete="off" spellcheck="false"></label>
    <p class="note" style="margin:0 0 10px">Use keys from a separate EMPTY paper account, never your main one.</p>
+   <p style="margin:0 0 12px"><a class="lnk" href="#alpaca-guide" id="alpacaGuideLink">How to add Alpaca data keys</a></p>
    <div class="frow"><button class="btn ghost" id="sShow">Show</button><button class="btn" id="sSave">Save keys</button></div>
    <div class="frow" style="margin-top:8px"><button class="btn ghost" id="sClearAlpaca">Remove Alpaca keys</button></div>
    <button class="btn ghost block" id="sTest" style="margin-top:8px">Test connection</button>
@@ -957,16 +964,54 @@ function renderSettings(){
 }
 function updateBadge(){const b=$('#dataBadge');const live=isLive();b.textContent=live?'Live':'Sample data';b.classList.toggle('live',live);b.title=live?'Market data from Finnhub':'Prices, news and filings shown are sample data, not real'}
 
+
+function renderAlpacaGuide(){
+  main().innerHTML=`<div class="shead"><button class="iconbtn" id="bk" aria-label="Back">${ic('back',20)}</button><span class="t"><b>How to add Alpaca data keys</b></span></div>
+  <div class="guide">
+  <p class="note" style="margin-top:-4px">This app can show official daily closes when you add Alpaca market-data keys. Use a free, separate, empty paper account — never a live or funded one.</p>
+  <section class="card"><h2><span class="guide-n">1</span> Create a free, empty paper account</h2>
+   <p>Open Alpaca in your browser and create a free account. Alpaca lets anyone open a paper-only account with an email address.</p>
+   <p>After you sign in, set aside a <b>separate paper account used only for data</b> in this app, and leave it empty. If you already have an account, you can open another paper account: in the upper-left corner of the dashboard, tap the paper account number and choose <b>Open New Paper Account</b>.</p>
+   <div class="ph">[Image placeholder: Alpaca dashboard, opening a new paper account]</div>
+   <p style="margin-top:10px">Why a separate empty paper account? Alpaca keys can also place trades, not just fetch prices. If a key from this unused paper account leaked, it still could not touch real money or a portfolio you care about. Never use keys from a live or funded account.</p></section>
+  <section class="card"><h2><span class="guide-n">2</span> Generate the paper account's key ID and secret</h2>
+   <p>In the upper-left corner, make sure that paper account is selected (look for the Paper Trading account). Then open the API Keys panel and generate a new key ID and secret for that account.</p>
+   <div class="ph">[Image placeholder: Alpaca paper dashboard, API Keys panel]</div>
+   <p style="margin-top:10px">The secret is shown only once, so copy it somewhere safe immediately. If you miss it, generate a new pair — that invalidates the old keys.</p>
+   <p>The key ID looks something like <b>PKXXXXXXXXXXXXXXXX</b>. Never share either value, and never paste them into a chat or email.</p></section>
+  <section class="card"><h2><span class="guide-n">3</span> Paste them into Settings</h2>
+   <p>Return to ${esc(APP_NAME)} and open Settings. Paste the key ID into <b>Alpaca data key ID</b> and the secret into <b>Alpaca data secret</b>. Tap <b>Save keys</b>.</p>
+   <p>Keys stay only on this device, in this browser. They are never sent to Ravenous Wolves. This app sends Alpaca keys only to data.alpaca.markets for market data, not for trading.</p></section>
+  <section class="card"><h2><span class="guide-n">4</span> Check that you're connected</h2>
+   <p>Under the fields, the status line should say <b>Alpaca: connected</b>. On quotes, look for <b>Verified close</b>.</p>
+   <p>If the line says <b>Alpaca: not set</b>, the keys are not saved yet. If it says <b>Alpaca: key rejected</b>, check that you pasted the paper account's key ID and secret, then save again.</p></section>
+  <section class="card"><h2>${ic('shield',19,'style="color:var(--up)"')} Safety notes</h2>
+   <ul>
+    <li>Keys stay only on this device in this browser and are never sent to Ravenous Wolves.</li>
+    <li>Never use keys from a live or funded account.</li>
+    <li>Never share keys or paste them into chats or emails.</li>
+    <li>To remove them, tap <b>Remove Alpaca keys</b> in Settings. That clears the two Alpaca fields on this device.</li>
+    <li>To rotate them, generate a new key pair in Alpaca's API Keys panel (this invalidates the old keys), then paste the new values here and tap <b>Save keys</b>.</li>
+   </ul></section>
+  <div class="frow" style="margin-bottom:8px"><button class="btn ghost block" id="guideBack" type="button">Back to Settings</button></div>
+  <p class="note">Educational only, not financial advice.</p>
+  </div>`;
+  const goSettings=()=>{location.hash='settings'};
+  $('#bk').onclick=goSettings;
+  $('#guideBack').onclick=goSettings;
+}
+
 /* =========================================================
    SHEET, ROUTER, BOOT
    ========================================================= */
 function openSheet(html,mount){$('#sheetBody').innerHTML=html;document.body.classList.add('sheet-open');mount&&mount($('#sheetBody'));setTimeout(()=>{const i=$('#sheetBody input');if(i&&!i.value)i.focus()},250)}
 function closeSheet(){document.body.classList.remove('sheet-open')}
-const VIEWS={home:renderHome,portfolio:renderPortfolio,watch:renderWatch,alerts:renderAlerts,learn:renderLearn,stock:renderStock,settings:renderSettings};
+const VIEWS={home:renderHome,portfolio:renderPortfolio,watch:renderWatch,alerts:renderAlerts,learn:renderLearn,stock:renderStock,settings:renderSettings,'alpaca-guide':renderAlpacaGuide};
 async function route(){
   const [v,arg]=(location.hash.slice(1)||'home').split('/');const view=VIEWS[v]?v:'home';
   if(TABS.some(t=>t[0]===view))lastTab=view;
-  $('#tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(view==='stock'||view==='settings'?(view==='stock'?lastTab:''):view)));
+  const tabOn=view==='stock'?lastTab:(view==='settings'||view==='alpaca-guide'?'':view);
+  $('#tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tabOn));
   closeSheet();updateBadge();
   try{await VIEWS[view](arg&&decodeURIComponent(arg))}catch(e){main().innerHTML=`<div class="card"><b>Something went wrong.</b><p class="muted small">${esc(e.message)}</p></div>`;console.error(e)}
   if(route._v!==location.hash){window.scrollTo(0,0);route._v=location.hash}
