@@ -206,6 +206,12 @@ a.news{color:inherit;text-decoration:none}
 .addbar{display:flex;gap:8px;margin-bottom:12px}
 .addbar input{flex:1;min-width:0;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);font-size:16px;outline:none;text-transform:uppercase}
 .addbar input::placeholder{text-transform:none}
+.vclose{display:block;font-size:11px;font-weight:600;color:var(--muted);line-height:1.35;margin-top:2px}
+.row .mid .vclose{white-space:normal;overflow:visible;text-overflow:unset;font-size:11px;line-height:1.35}
+.alpaca-st{margin:8px 0 0;font-size:12.5px;font-weight:650;color:var(--muted)}
+.alpaca-st.ok{color:var(--up)}
+.alpaca-st.bad{color:var(--down)}
+.alpaca-st.warn{color:var(--gold)}
 </style>
 </head>
 <body>
@@ -309,13 +315,13 @@ const SAMPLE_STATE = ()=>({
     {id:'a3',ticker:'MSFT',type:'below',value:480},
     {id:'a4',ticker:'KO',type:'above',value:72},
     {id:'a5',ticker:'TSLA',type:'pctDown',value:5}],
-  settings:{provider:'sample',finnhubKey:'',twelveKey:''}
+  settings:{provider:'sample',finnhubKey:'',twelveKey:'',alpacaKeyId:'',alpacaSecret:''}
 });
 const Store={
   s:null,
   load(){try{this.s=JSON.parse(localStorage.getItem(STORE_KEY))}catch(e){this.s=null}
     if(!this.s||!this.s.v){this.s=SAMPLE_STATE();this.save()}
-    this.s.settings=Object.assign({provider:'sample',finnhubKey:'',twelveKey:''},this.s.settings||{});if(this.s.settings.provider==='finnhub')this.s.settings.provider='live';
+    this.s.settings=Object.assign({provider:'sample',finnhubKey:'',twelveKey:'',alpacaKeyId:'',alpacaSecret:''},this.s.settings||{});if(this.s.settings.provider==='finnhub')this.s.settings.provider='live';
     return this.s},
   save(){localStorage.setItem(STORE_KEY,JSON.stringify(this.s))},
   uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
@@ -457,6 +463,137 @@ const METRIC_KEYS=['revenueGrowthTTMYoy','netProfitMarginTTM','totalDebt/totalEq
 const METRIC_SHAPE=j=>{const m=(j&&j.metric)||{};const o={};METRIC_KEYS.forEach(k=>{if(m[k]!=null)o[k]=m[k]});return{metric:o}};
 const INSIDER_CODES={P:'Open-market buy',S:'Open-market sale',A:'Stock award',M:'Option exercise',F:'Tax withholding',G:'Gift',D:'Returned to company',C:'Conversion'};
 
+/* ---------- Alpaca Market Data (data.alpaca.markets only; never trading endpoints) ---------- */
+const ALPACA_DATA_HOST='https://data.alpaca.markets';
+const AlpacaNet={status:'idle'}; // connected | unauthorized | forbidden | ratelimit | cors | network | idle
+function alpacaReady(){const s=Store.s.settings;return !!(s.alpacaKeyId&&s.alpacaSecret)}
+function alpacaStatusText(){
+  if(!alpacaReady())return 'Alpaca: not set';
+  const m={connected:'Alpaca: connected',unauthorized:'Alpaca: key rejected',forbidden:'Alpaca: key rejected',ratelimit:'Alpaca: rate limited',cors:'Alpaca: could not reach (CORS or network)',network:'Alpaca: could not reach (CORS or network)',idle:'Alpaca: saved, not checked yet'};
+  return m[AlpacaNet.status]||('Alpaca: error');
+}
+function alpacaStatusClass(){
+  if(!alpacaReady()||AlpacaNet.status==='idle')return '';
+  if(AlpacaNet.status==='connected')return 'ok';
+  if(AlpacaNet.status==='ratelimit')return 'warn';
+  return 'bad';
+}
+function alpacaEndISO(){return new Date(Date.now()-16*60*1000).toISOString()}
+function alpacaStartISO(){const d=new Date(Date.now()-16*60*1000);d.setUTCDate(d.getUTCDate()-12);return d.toISOString()}
+const alpacaLim=Limiter(40,1);
+function classifyAlpacaHttp(status,body){
+  if(status===401)return 'unauthorized';
+  if(status===429)return 'ratelimit';
+  if(status===403||status===422){
+    const msg=(body&&(body.message||body.error||''))+''+(typeof body==='string'?body:'');
+    if(/subscription does not permit|recent SIP|sip/i.test(msg)||status===422)return 'sip_rejected';
+    return 'forbidden';
+  }
+  return 'network';
+}
+async function alpacaGetBars(symbols,feed,force){
+  const uniq=[...new Set(symbols.filter(Boolean))];
+  if(!uniq.length)return {bars:{}};
+  if(!alpacaReady())throw new ApiError('nokey');
+  const params=new URLSearchParams({symbols:uniq.join(','),timeframe:'1Day',feed,start:alpacaStartISO(),end:alpacaEndISO(),limit:'10000',adjustment:'raw',sort:'asc'});
+  const url=ALPACA_DATA_HOST+'/v2/stocks/bars?'+params;
+  const ck='alpaca:/v2/stocks/bars:'+feed+':'+uniq.slice().sort().join(',')+':'+alpacaEndISO().slice(0,16);
+  const c=force?null:Cache.get(ck);
+  if(c&&Date.now()-c.t<15*MIN){if(c.d&&c.d.__err)throw new ApiError(c.d.__err);return c.d}
+  if(inflight.has(ck))return inflight.get(ck);
+  const p=(async()=>{
+    let r;
+    try{
+      r=await alpacaLim.run(()=>fetch(url,{cache:'no-store',headers:{'APCA-API-KEY-ID':Store.s.settings.alpacaKeyId,'APCA-API-SECRET-KEY':Store.s.settings.alpacaSecret}}));
+    }catch(e){
+      const cors=/failed to fetch|networkerror|load failed|cors/i.test((e&&e.message)||'')||(e&&e.name==='TypeError');
+      const code=cors?'cors':'network';
+      AlpacaNet.status=code;throw new ApiError(code);
+    }
+    let body=null;try{body=await r.json()}catch(e){body=null}
+    if(!r.ok){
+      const code=classifyAlpacaHttp(r.status,body);
+      if(code!=='sip_rejected')AlpacaNet.status=code;
+      throw new ApiError(code, (body&&(body.message||body.error))||('HTTP '+r.status));
+    }
+    const bars=(body&&body.bars)||{};
+    let token=body&&body.next_page_token;
+    let pages=0;
+    while(token&&pages<8){
+      pages++;
+      const u=ALPACA_DATA_HOST+'/v2/stocks/bars?'+params+'&page_token='+encodeURIComponent(token);
+      let r2;
+      try{r2=await alpacaLim.run(()=>fetch(u,{cache:'no-store',headers:{'APCA-API-KEY-ID':Store.s.settings.alpacaKeyId,'APCA-API-SECRET-KEY':Store.s.settings.alpacaSecret}}))}
+      catch(e){break}
+      let b2=null;try{b2=await r2.json()}catch(e){b2=null}
+      if(!r2.ok)break;
+      const more=(b2&&b2.bars)||{};
+      if(Array.isArray(bars)&&Array.isArray(more))bars.push(...more);
+      else if(more&&typeof more==='object')Object.keys(more).forEach(k=>{bars[k]=(bars[k]||[]).concat(more[k]||[])});
+      token=b2&&b2.next_page_token;
+    }
+    const shaped={bars:bars};
+    Cache.set(ck,shaped);return shaped;
+  })().finally(()=>inflight.delete(ck));
+  inflight.set(ck,p);return p;
+}
+function barSessionDate(t){
+  if(!t)return null;
+  const iso=typeof t==='string'?t:new Date(t).toISOString();
+  if(iso==='Invalid Date'||!iso)return null;
+  const m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m)return null;
+  const d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],12,0,0));
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});
+}
+function lastBar(list){
+  if(!list||!list.length)return null;
+  return list[list.length-1];
+}
+function barsForSymbol(payload,sym){
+  const bars=payload&&payload.bars;
+  if(!bars)return null;
+  if(Array.isArray(bars)){
+    if(bars.every(x=>x&&(x.symbol||x.S)))return lastBar(bars.filter(x=>x&&(x.symbol||x.S)===sym));
+    return lastBar(bars);
+  }
+  if(Array.isArray(bars[sym]))return lastBar(bars[sym]);
+  return null;
+}
+async function verifiedCloses(syms){
+  const uniq=[...new Set((syms||[]).filter(Boolean))];
+  const out={};
+  if(!alpacaReady()||!uniq.length)return out;
+  const parse=(payload,feed)=>{
+    const feedLabel=feed==='iex'?'IEX':'SIP';
+    uniq.forEach(sym=>{
+      const bar=barsForSymbol(payload,sym);
+      if(!bar||bar.c==null)return;
+      const dateLabel=barSessionDate(bar.t||bar.Timestamp);
+      if(!dateLabel)return;
+      out[sym]={close:+bar.c,dateLabel,feed,feedLabel,label:'Close '+dateLabel+' · Alpaca '+feedLabel};
+    });
+  };
+  try{
+    try{parse(await alpacaGetBars(uniq,'sip'),'sip')}
+    catch(e){
+      if(e&&(e.code==='sip_rejected'||e.code==='forbidden'))parse(await alpacaGetBars(uniq,'iex'),'iex');
+      else throw e;
+    }
+    AlpacaNet.status='connected';
+  }catch(e){
+    if(e&&e.code)AlpacaNet.status=e.code==='sip_rejected'?'forbidden':e.code;
+    else AlpacaNet.status='network';
+  }
+  return out;
+}
+function vcloseHtml(vc,withPrice=true){
+  if(!vc)return '';
+  const src=esc(vc.dateLabel)+' · Alpaca '+esc(vc.feedLabel);
+  const head=withPrice?`Verified close ${fmt$(vc.close)}`:'Verified close';
+  return `<span class="vclose">${head}<br>${src}</span>`;
+}
+
 const FUND_NAMES={VOO:'Vanguard S&P 500 ETF',SPY:'SPDR S&P 500 ETF',IVV:'iShares Core S&P 500 ETF',VTI:'Vanguard Total Stock Market ETF',QQQ:'Invesco QQQ Trust',SCHD:'Schwab US Dividend Equity ETF',VXUS:'Vanguard Total Intl Stock ETF',BND:'Vanguard Total Bond Market ETF',DIA:'SPDR Dow Jones Industrial ETF',IWM:'iShares Russell 2000 ETF'};
 const FUND_HINTS={VOO:['S&P 500','Vanguard'],SPY:['S&P 500'],IVV:['S&P 500'],SPLG:['S&P 500'],QQQ:['Nasdaq'],VTI:['Vanguard','total stock market'],DIA:['Dow'],IWM:['Russell 2000']};
 function newsKeywords(sym,name){const re=w=>new RegExp('(^|[^A-Za-z])'+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^A-Za-z])','i');
@@ -548,9 +685,10 @@ function alertHit(a,q){if(!q)return false;switch(a.type){case'above':return q.pr
 async function quotes(syms){const u=[...new Set(syms)];const rs=await Promise.all(u.map(s=>safe(data().quote(s))));const m={};
   u.forEach((s,i)=>{m[s]=rs[i].ok?rs[i].v:null;if(!rs[i].ok&&!m.__err)Object.defineProperty(m,'__err',{value:rs[i].e,enumerable:false})});return m}
 async function portfolio(){
-  const H=Store.s.holdings;const Q=await quotes(H.map(h=>h.ticker));
-  const rows=H.map(h=>{const q=Q[h.ticker];const basis=h.shares*h.cost;if(!q)return{...h,q:null,value:null,basis,gain:null,gainPct:null,day:0};
-    const value=h.shares*q.price;return{...h,q,value,basis,gain:value-basis,gainPct:basis?((value-basis)/basis*100):0,day:h.shares*q.change}}).sort((a,b)=>(b.value??-1)-(a.value??-1));
+  const H=Store.s.holdings;const tickers=H.map(h=>h.ticker);
+  const [Q,VC]=await Promise.all([quotes(tickers),verifiedCloses(tickers)]);
+  const rows=H.map(h=>{const q=Q[h.ticker];const vc=VC[h.ticker]||null;const basis=h.shares*h.cost;if(!q)return{...h,q:null,vc,value:null,basis,gain:null,gainPct:null,day:0};
+    const value=h.shares*q.price;return{...h,q,vc,value,basis,gain:value-basis,gainPct:basis?((value-basis)/basis*100):0,day:h.shares*q.change}}).sort((a,b)=>(b.value??-1)-(a.value??-1));
   const priced=rows.filter(r=>r.q);const value=sum(priced.map(r=>r.value)),basis=sum(priced.map(r=>r.basis)),day=sum(priced.map(r=>r.day));
   return{rows,priced,missing:rows.length-priced.length,err:Q.__err||null,value,basis,gain:value-basis,gainPct:basis?(value-basis)/basis*100:0,day,dayPct:value-day?day/(value-day)*100:0}}
 
@@ -627,7 +765,7 @@ async function renderHome(){
   <section class="card brief"><h2>${ic('sunrise',20)} Morning brief <span class="r">${esc(et.weekday)}, ${esc(et.month)} ${esc(et.day)} ${live?'':sampleNote}</span></h2>${brief}
     ${P.length?`<div class="stats"><div class="stat"><b>${fmt$(pf.value,0)}</b><span>Total value</span></div><div class="stat"><b class="${cls(pf.day)}">${fmtS$(pf.day,0)}</b><span>Today</span></div><div class="stat"><b class="${cls(pf.gain)}">${fmtPct(pf.gainPct,1)}</b><span>All-time</span></div></div>`:''}</section>
   <section class="card"><h2>${ic('grid',20,'style="color:var(--accent)"')} Your heat map <span class="r">size = value · color = today</span></h2>
-    ${P.length?`<div class="tm" id="tm"></div><div class="legend"><span>-3%</span><span class="bar"></span><span>+3%</span></div>`:pf.rows.length?soft(pf.err,'Prices unavailable'):`<div class="empty">No holdings yet.</div>`}</section>
+    ${P.length?`<div class="tm" id="tm"></div><div class="legend"><span>-3%</span><span class="bar"></span><span>+3%</span></div>${P.some(r=>r.vc)?`<p class="note" style="margin:8px 0 0">Verified closes from Alpaca ${esc((P.find(r=>r.vc)||{}).vc.feedLabel)}. Live prices remain from Finnhub.</p>`:''}`:pf.rows.length?soft(pf.err,'Prices unavailable'):`<div class="empty">No holdings yet.</div>`}</section>
   <section class="card"><h2>${ic('news',20,'style="color:var(--accent)"')} News for your stocks <span class="r">${tagOr()}</span></h2>
     ${nw.ok?(news.slice(0,8).map(n=>newsItem(n)).join('')||'<div class="empty">No recent headlines for your stocks.</div>'):soft(nw.e,'News unavailable')}
     ${live?'':`<p class="note" style="margin:8px 0 0">Headlines here are generated sample text for the preview, not real news.</p>`}</section>
@@ -643,8 +781,8 @@ async function renderPortfolio(){
   <section class="card sum"><span class="muted small">Total value</span><div class="big">${fmt$(pf.value)}</div>
     <div class="grid"><div><span>Total gain / loss</span><b class="${cls(pf.gain)}">${fmtS$(pf.gain,0)} (${fmtPct(pf.gainPct,1)})</b></div><div><span>Today</span><b class="${cls(pf.day)}">${fmtS$(pf.day,0)} (${fmtPct(pf.dayPct)})</b></div><div><span>Cost basis</span><b>${fmt$(pf.basis,0)}</b></div><div><span>Holdings</span><b>${pf.rows.length}</b></div></div>
     ${pf.priced.length?`<div class="alloc">${pf.priced.map(r=>`<i style="flex:${r.value};background:${LOGO_COLORS[hash(r.ticker)%LOGO_COLORS.length]}" title="${esc(r.ticker)}"></i>`).join('')}</div>`:''}</section>
-  <section class="card">${pf.rows.map(r=>`<div class="row" style="cursor:pointer" data-go="stock/${esc(r.ticker)}">${logo(r.ticker)}<span class="mid"><b>${esc(r.ticker)}</b><span>${fmtNum(r.shares)} sh · avg ${fmt$(r.cost)}</span></span><span class="end">${r.q?`<b>${fmt$(r.value,0)}</b><span class="${cls(r.gain)}">${fmtS$(r.gain,0)} · ${fmtPct(r.gainPct,1)}</span>`:`<b class="muted">—</b><span class="muted">No price</span>`}</span><button class="del" data-edit="${esc(r.id)}" aria-label="Edit ${esc(r.ticker)}">${ic('pencil',18)}</button></div>`).join('')||`<div class="empty">No holdings yet. Tap <b>Add</b> to enter a ticker, shares and what you paid.</div>`}</section>
-  <p class="note">You type positions in yourself; this app never asks for a brokerage login. ${live?`Prices are live from Finnhub${pf.priced[0]&&pf.priced[0].q.time?' as of '+asOf(pf.priced[0].q.time):''}.`:`Prices are ${sampleNote} data in this preview.`}</p>`;
+  <section class="card">${pf.rows.map(r=>`<div class="row" style="cursor:pointer" data-go="stock/${esc(r.ticker)}">${logo(r.ticker)}<span class="mid"><b>${esc(r.ticker)}</b><span>${fmtNum(r.shares)} sh · avg ${fmt$(r.cost)}</span>${vcloseHtml(r.vc)}</span><span class="end">${r.q?`<b>${fmt$(r.value,0)}</b><span class="${cls(r.gain)}">${fmtS$(r.gain,0)} · ${fmtPct(r.gainPct,1)}</span>`:`<b class="muted">—</b><span class="muted">No price</span>`}</span><button class="del" data-edit="${esc(r.id)}" aria-label="Edit ${esc(r.ticker)}">${ic('pencil',18)}</button></div>`).join('')||`<div class="empty">No holdings yet. Tap <b>Add</b> to enter a ticker, shares and what you paid.</div>`}</section>
+  <p class="note">You type positions in yourself; this app never asks for a brokerage login. ${live?`Prices are live from Finnhub${pf.priced[0]&&pf.priced[0].q.time?' as of '+asOf(pf.priced[0].q.time):''}.`:`Prices are ${sampleNote} data in this preview.`} ${pf.rows.some(r=>r.vc)?'Verified closes are official/consolidated daily bars from Alpaca (SIP when available).':''}</p>`;
   $('#addH').onclick=()=>holdingSheet();
   main().querySelectorAll('[data-edit]').forEach(b=>b.onclick=e=>{e.stopPropagation();holdingSheet(Store.s.holdings.find(h=>h.id===b.dataset.edit))});
 }
@@ -665,12 +803,12 @@ function holdingSheet(h,presetTicker){
 
 async function renderWatch(){
   const W=Store.s.watchlist;const live=isLive();
-  const [Q,C,Pr]=await Promise.all([quotes(W),Promise.all(W.map(s=>safe(data().candles(s,30)))),Promise.all(W.map(s=>safe(data().profile(s))))]);
+  const [Q,C,Pr,VC]=await Promise.all([quotes(W),Promise.all(W.map(s=>safe(data().candles(s,30)))),Promise.all(W.map(s=>safe(data().profile(s)))),verifiedCloses(W)]);
   main().innerHTML=`<div class="pagetitle"><h2>Watchlist</h2></div>
    <form class="addbar" id="wAdd"><input id="wT" placeholder="Add a ticker, e.g. META" autocomplete="off" autocapitalize="characters"><button class="btn">${ic('plus',16)} Add</button></form>
    ${Q.__err&&W.every(s=>!Q[s])?soft(Q.__err,'Prices unavailable'):''}
-   <section class="card">${W.map((s,i)=>{const q=Q[s];const name=Pr[i].ok?Pr[i].v.name:s;return`<div class="row" style="cursor:pointer" data-go="stock/${esc(s)}">${logo(s)}<span class="mid"><b>${esc(s)}</b><span>${esc(name)}</span></span>${C[i].ok?sparkline(C[i].v.closes):''}<span class="end" style="min-width:76px">${q?`<b>${fmt$(q.price)}</b><span class="${cls(q.changePct)}">${fmtPct(q.changePct)}</span>`:`<b class="muted">—</b><span class="muted">No price</span>`}</span><button class="del" data-rm="${esc(s)}" aria-label="Remove ${esc(s)}">${ic('close',16)}</button></div>`}).join('')||'<div class="empty">Nothing here yet. Add a ticker above.</div>'}</section>
-   <p class="note">Tap any ticker for its chart, support &amp; resistance, quality score, and insider / Congress trades. ${live?'Prices are live from Finnhub.':`Prices are ${sampleNote} data.`}</p>`;
+   <section class="card">${W.map((s,i)=>{const q=Q[s];const name=Pr[i].ok?Pr[i].v.name:s;const vc=VC[s];return`<div class="row" style="cursor:pointer" data-go="stock/${esc(s)}">${logo(s)}<span class="mid"><b>${esc(s)}</b><span>${esc(name)}</span>${vcloseHtml(vc)}</span>${C[i].ok?sparkline(C[i].v.closes):''}<span class="end" style="min-width:76px">${q?`<b>${fmt$(q.price)}</b><span class="${cls(q.changePct)}">${fmtPct(q.changePct)}</span>`:`<b class="muted">—</b><span class="muted">No price</span>`}</span><button class="del" data-rm="${esc(s)}" aria-label="Remove ${esc(s)}">${ic('close',16)}</button></div>`}).join('')||'<div class="empty">Nothing here yet. Add a ticker above.</div>'}</section>
+   <p class="note">Tap any ticker for its chart, support &amp; resistance, quality score, and insider / Congress trades. ${live?'Prices are live from Finnhub.':`Prices are ${sampleNote} data.`} ${W.some(s=>VC[s])?'Verified closes are from Alpaca.':''}</p>`;
   $('#wAdd').onsubmit=e=>{e.preventDefault();const t=normTicker($('#wT').value);if(!t)return;if(!Store.s.watchlist.includes(t))Store.s.watchlist.unshift(t);Store.save();toast(t+' added');route()};
   main().querySelectorAll('[data-rm]').forEach(b=>b.onclick=e=>{e.stopPropagation();Store.s.watchlist=Store.s.watchlist.filter(x=>x!==b.dataset.rm);Store.save();toast(b.dataset.rm+' removed');route()});
 }
@@ -679,8 +817,8 @@ let chartRange=63;
 async function renderStock(sym){
   sym=normTicker(sym);if(!sym){location.hash='watch';return}
   const D=data();const live=D.live;
-  const [Rq,Rpr,Rc,Rf,Ri,Rg,Rn]=await Promise.all([safe(D.quote(sym)),safe(D.profile(sym)),safe(D.candles(sym,260)),safe(D.fundamentals(sym)),safe(D.insiders(sym)),safe(D.congress(sym)),safe(D.news([sym]))]);
-  const q=Rq.ok?Rq.v:null;const pr=Rpr.ok?Rpr.v:{name:sym,sector:'',type:KNOWN_ETFS.has(sym)?'etf':'stock',marketCap:null,etf:null};
+  const [Rq,Rpr,Rc,Rf,Ri,Rg,Rn,VC]=await Promise.all([safe(D.quote(sym)),safe(D.profile(sym)),safe(D.candles(sym,260)),safe(D.fundamentals(sym)),safe(D.insiders(sym)),safe(D.congress(sym)),safe(D.news([sym])),verifiedCloses([sym])]);
+  const q=Rq.ok?Rq.v:null;const vc=VC[sym]||null;const pr=Rpr.ok?Rpr.v:{name:sym,sector:'',type:KNOWN_ETFS.has(sym)?'etf':'stock',marketCap:null,etf:null};
   const h=Store.s.holdings.find(x=>x.ticker===sym);const watching=Store.s.watchlist.includes(sym);const qs=Rf.ok?qualityScore(Rf.v):null;
   const isFund=pr.type==='etf';
   const insK=t=>t.kind==='buy'?'BUY':t.kind==='sell'?'SELL':(t.short||'OTHER');
@@ -695,7 +833,7 @@ async function renderStock(sym){
     `<p class="note" style="margin:8px 0 0">Members of Congress can report trades up to 45 days late, and only give dollar ranges.${live?'':' Names shown are placeholders.'}</p>`;
   main().innerHTML=`
   <div class="shead"><button class="iconbtn" id="bk" aria-label="Back">${ic('back',20)}</button>${logo(sym)}<span class="t"><b>${esc(sym)}</b><span>${esc(pr.name)}${pr.sector?' · '+esc(pr.sector):''}</span></span><button class="iconbtn" id="wt" aria-label="${watching?'Remove from':'Add to'} watchlist" style="color:${watching?'var(--gold)':'var(--muted)'}">${ic(watching?'star':'starO',20)}</button></div>
-  <section class="card">${q?`<div style="display:flex;align-items:flex-end;gap:10px"><span class="price">${fmt$(q.price)}</span><b class="${cls(q.change)}" style="padding-bottom:4px">${fmtS$(q.change)} (${fmtPct(q.changePct)})</b><span class="sp" style="flex:1"></span>${live?'':sampleNote}</div>${live&&q.time?`<div class="muted small">As of ${asOf(q.time)} · Finnhub</div>`:''}`:soft(Rq.e,'Price unavailable')}
+  <section class="card">${q?`<div style="display:flex;align-items:flex-end;gap:10px"><span class="price">${fmt$(q.price)}</span><b class="${cls(q.change)}" style="padding-bottom:4px">${fmtS$(q.change)} (${fmtPct(q.changePct)})</b><span class="sp" style="flex:1"></span>${live?'':sampleNote}</div>${live&&q.time?`<div class="muted small">As of ${asOf(q.time)} · Finnhub</div>`:''}${vc?vcloseHtml(vc):''}`:soft(Rq.e,'Price unavailable')}
    ${Rc.ok?`<div class="chart" id="ch"></div>
    <div class="seg" id="rg">${[[21,'1M'],[63,'3M'],[126,'6M'],[260,'1Y']].map(([d,l])=>`<button data-d="${d}" class="${d===chartRange?'on':''}">${l}</button>`).join('')}</div>
    <div class="lvls" id="lv"></div>
@@ -771,10 +909,15 @@ function renderSettings(){
    <p class="muted small" id="sStat" style="margin:-4px 0 12px">${esc(status)}</p>
    <label class="f">Finnhub API key<input id="sK" type="password" value="${esc(s.finnhubKey)}" placeholder="Paste your free key from finnhub.io" autocomplete="off" spellcheck="false"></label>
    <label class="f">Twelve Data API key (optional, turns on charts)<input id="sT" type="password" value="${esc(s.twelveKey||'')}" placeholder="Free key from twelvedata.com" autocomplete="off" spellcheck="false"></label>
+   <label class="f">Alpaca data key ID<input id="sAId" type="password" value="${esc(s.alpacaKeyId||'')}" placeholder="Key ID from a separate empty paper account" autocomplete="off" spellcheck="false"></label>
+   <label class="f">Alpaca data secret<input id="sASec" type="password" value="${esc(s.alpacaSecret||'')}" placeholder="Secret key from the same paper account" autocomplete="off" spellcheck="false"></label>
+   <p class="note" style="margin:0 0 10px">Use keys from a separate EMPTY paper account, never your main one.</p>
    <div class="frow"><button class="btn ghost" id="sShow">Show</button><button class="btn" id="sSave">Save keys</button></div>
+   <div class="frow" style="margin-top:8px"><button class="btn ghost" id="sClearAlpaca">Remove Alpaca keys</button></div>
    <button class="btn ghost block" id="sTest" style="margin-top:8px">Test connection</button>
+   <p class="alpaca-st ${alpacaStatusClass()}" id="alpacaSt">${esc(alpacaStatusText())}</p>
    <div id="sRes"></div>
-   <p class="note" style="margin:10px 0 0">Keys are stored only on this phone and are sent only to Finnhub / Twelve Data when the app asks for data. Never enter a brokerage password here; the app will never ask for one.</p></section>
+   <p class="note" style="margin:10px 0 0">Keys are stored only on this phone. Finnhub and Twelve Data keys are sent only to those services; Alpaca data keys are sent only to data.alpaca.markets (market data, not trading). Never enter a brokerage password here; the app will never ask for one.</p></section>
   <section class="card"><h2>${ic('info',19,'style="color:var(--accent)"')} Your data</h2>
    <p class="muted small" style="margin-top:0">Holdings, watchlist and alerts are saved in this browser only. Cached market data: ${(Cache.size()/1024).toFixed(0)} KB.</p>
    <div class="frow" style="margin-bottom:8px"><button class="btn ghost" id="sCache">Refresh market data</button></div>
@@ -783,10 +926,13 @@ function renderSettings(){
   $('#bk').onclick=()=>{location.hash=lastTab};
   $('#sTheme').onclick=e=>{const b=e.target.closest('button');if(!b||!window.__theme)return;window.__theme.set(b.dataset.t);$('#sTheme').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))};
   $('#sP').onclick=e=>{const b=e.target.closest('button');if(!b)return;s.provider=b.dataset.p;Store.save();inflight.clear();toast(b.dataset.p==='live'?(s.finnhubKey?'Live data on':'Add your key to go live'):'Sample data on');renderSettings();updateBadge()};
-  $('#sShow').onclick=()=>{['#sK','#sT'].forEach(id=>{const i=$(id);i.type=i.type==='password'?'text':'password'});$('#sShow').textContent=$('#sK').type==='password'?'Show':'Hide'};
-  $('#sSave').onclick=()=>{s.finnhubKey=$('#sK').value.trim();s.twelveKey=$('#sT').value.trim();Store.save();Cache.clear();toast('Keys saved on this device');renderSettings();updateBadge()};
-  $('#sTest').onclick=async()=>{const out=$('#sRes');const fk=$('#sK').value.trim();if(!fk){out.innerHTML=soft('Paste your Finnhub key first.');return}
-    s.finnhubKey=fk;s.twelveKey=$('#sT').value.trim();Store.save();out.innerHTML='<p class="muted small">Testing…</p>';
+  $('#sShow').onclick=()=>{['#sK','#sT','#sAId','#sASec'].forEach(id=>{const i=$(id);if(i)i.type=i.type==='password'?'text':'password'});$('#sShow').textContent=$('#sK').type==='password'?'Show':'Hide'};
+  $('#sSave').onclick=()=>{s.finnhubKey=$('#sK').value.trim();s.twelveKey=$('#sT').value.trim();s.alpacaKeyId=$('#sAId').value.trim();s.alpacaSecret=$('#sASec').value.trim();AlpacaNet.status='idle';Store.save();Cache.clear();toast('Keys saved on this device');renderSettings();updateBadge()};
+  $('#sClearAlpaca').onclick=()=>{s.alpacaKeyId='';s.alpacaSecret='';AlpacaNet.status='idle';Store.save();Cache.clear();toast('Alpaca keys removed from this device');renderSettings()};
+  if(alpacaReady()){verifiedCloses(['AAPL']).then(()=>{const el=$('#alpacaSt');if(!el)return;el.textContent=alpacaStatusText();el.className='alpaca-st '+alpacaStatusClass()})}
+  $('#sTest').onclick=async()=>{const out=$('#sRes');s.finnhubKey=$('#sK').value.trim();s.twelveKey=$('#sT').value.trim();s.alpacaKeyId=$('#sAId').value.trim();s.alpacaSecret=$('#sASec').value.trim();Store.save();
+    const fk=s.finnhubKey;if(!fk){out.innerHTML=soft('Paste your Finnhub key first.');return}
+    out.innerHTML='<p class="muted small">Testing…</p>';
     const row=(name,r)=>`<div class="chk"><span class="${r===true?'okc':'noc'}">${r===true?'Works':r}</span>${name}</div>`;
     const t=async(fn)=>{try{await fn();return true}catch(e){return e.code==='forbidden'?'Paid plan':e.code==='unauthorized'?'Bad key':e.code==='nohistory'?'Not on plan':'Error'}};
     const res=[['Quotes',await t(()=>fh('/quote',{symbol:'AAPL'},0,{force:true}))]];
@@ -797,10 +943,17 @@ function renderSettings(){
     res.push(['Insider trades',await t(()=>fh('/stock/insider-transactions',{symbol:'AAPL'},0,{force:true,shape:x=>({n:(x.data||[]).length})}))]);
     Cache.set('flag:fhCongress',0);localStorage.removeItem(Cache.P+'flag:fhCongress');res.push(['Congress trades',await t(()=>LiveProvider.congress('AAPL'))]);
     localStorage.removeItem(Cache.P+'flag:fhCandle');res.push(['Price history (charts)',await t(()=>LiveProvider.candles('AAPL',30))]);
+    if(alpacaReady()){
+      AlpacaNet.status='idle';
+      const aok=await t(()=>alpacaGetBars(['AAPL'],'sip',true).catch(async e=>{if(e&&(e.code==='sip_rejected'||e.code==='forbidden'))return alpacaGetBars(['AAPL'],'iex',true);throw e}));
+      if(aok===true)AlpacaNet.status='connected';
+      res.push(['Alpaca verified close',aok===true?true:aok]);
+      const el=$('#alpacaSt');if(el){el.textContent=alpacaStatusText();el.className='alpaca-st '+alpacaStatusClass()}
+    }
     out.innerHTML=`<div class="chks">${res.map(([n,r])=>row(n,r)).join('')}</div>`;updateBadge()};
   $('#sCache').onclick=()=>{Cache.clear();inflight.clear();toast('Cached market data cleared');renderSettings()};
   $('#sReset').onclick=()=>{if(!confirm('Replace your holdings, watchlist and alerts with the sample starter set?'))return;const keep={...s};Store.s=SAMPLE_STATE();Object.assign(Store.s.settings,keep);Store.save();toast('Sample holdings loaded')};
-  $('#sWipe').onclick=()=>{if(!confirm('Erase all holdings, watchlist, alerts, cached data and your keys from this device?'))return;Store.s={...SAMPLE_STATE(),holdings:[],watchlist:[],alerts:[]};Store.s.settings={provider:'sample',finnhubKey:'',twelveKey:''};Store.save();Cache.clear();toast('All data erased');renderSettings();updateBadge()};
+  $('#sWipe').onclick=()=>{if(!confirm('Erase all holdings, watchlist, alerts, cached data and your keys from this device?'))return;Store.s={...SAMPLE_STATE(),holdings:[],watchlist:[],alerts:[]};Store.s.settings={provider:'sample',finnhubKey:'',twelveKey:'',alpacaKeyId:'',alpacaSecret:''};AlpacaNet.status='idle';Store.save();Cache.clear();toast('All data erased');renderSettings();updateBadge()};
 }
 function updateBadge(){const b=$('#dataBadge');const live=isLive();b.textContent=live?'Live':'Sample data';b.classList.toggle('live',live);b.title=live?'Market data from Finnhub':'Prices, news and filings shown are sample data, not real'}
 
